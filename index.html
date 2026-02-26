@@ -1,0 +1,1350 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+  <title>おつかいクエスト（MET風）- MCIスクリーニング</title>
+  <style>
+    :root{
+      --bg1:#fff2f7; --bg2:#e9fbff;
+      --ink:#1f2937; --muted:#6b7280;
+      --panel: rgba(255,255,255,.86);
+      --shadow: 0 10px 30px rgba(0,0,0,.12);
+      --shadow2: 0 6px 18px rgba(0,0,0,.10);
+
+      --tap: 44px;
+      --safeTop: env(safe-area-inset-top);
+      --safeBot: env(safe-area-inset-bottom);
+      --safeL: env(safe-area-inset-left);
+      --safeR: env(safe-area-inset-right);
+    }
+
+    html,body{
+      height:100%;
+      margin:0;
+      font-family: ui-rounded, system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", "Segoe UI", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(1200px 600px at 15% 10%, #ffffff 0%, rgba(255,255,255,0) 60%),
+        radial-gradient(900px 500px at 85% 0%, #ffffff 0%, rgba(255,255,255,0) 60%),
+        linear-gradient(135deg, var(--bg1), var(--bg2));
+      -webkit-tap-highlight-color: transparent;
+      /* ★重要：iPhoneで見切れた時にスクロールできるように */
+      overflow-y: auto;
+      overscroll-behavior: auto;
+    }
+    *{ box-sizing:border-box; }
+
+    .app{
+      /* ★重要：height:100%だと「はみ出した内容が見えない」ことがある */
+      min-height:100%;
+      height:auto;
+      padding: calc(10px + var(--safeTop)) calc(10px + var(--safeR)) calc(10px + var(--safeBot)) calc(10px + var(--safeL));
+      display:flex;
+      flex-direction:column;
+      gap: 10px;
+      max-width: 980px;
+      margin: 0 auto;
+    }
+
+    .topbar{
+      background: var(--panel);
+      border-radius: 20px;
+      box-shadow: var(--shadow2);
+      padding: 10px 12px;
+      display:flex; align-items:center; justify-content:space-between; gap: 10px;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      position: sticky; /* ★iPhoneで上に固定 */
+      top: calc(0px + var(--safeTop));
+      z-index: 50;
+    }
+    .brand{ display:flex; align-items:center; gap:10px; min-width:0;}
+    .logo{
+      width: 44px; height: 44px; border-radius: 14px;
+      background: linear-gradient(135deg, rgba(255,95,168,.85), rgba(73,201,255,.85));
+      box-shadow: inset 0 0 0 2px rgba(255,255,255,.65);
+      display:grid; place-items:center;
+      flex: 0 0 auto;
+    }
+    .logo span{ font-size: 22px; }
+    .titlewrap{ min-width:0; }
+    .title{ font-weight: 900; letter-spacing:.02em; font-size:16px; line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .subtitle{ font-size: 12px; color: var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .pill{
+      display:inline-flex; align-items:center; gap:6px;
+      padding: 7px 10px;
+      background: rgba(255,255,255,.90);
+      border-radius: 999px;
+      box-shadow: 0 6px 14px rgba(0,0,0,.08);
+      font-size: 12px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .main{
+      flex:1;
+      display:grid;
+      gap: 10px;
+      grid-template-columns: 1.25fr 0.95fr;
+      align-items:start;
+    }
+
+    /* ★iPhone/小画面：縦積み */
+    @media (max-width: 860px){
+      .main{ grid-template-columns: 1fr; }
+    }
+
+    .card{
+      background: rgba(255,255,255,.72);
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+      padding: 12px;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      position:relative;
+      overflow:hidden;
+    }
+    .card h3{
+      margin: 0 0 8px 0;
+      font-size: 14px;
+      color: #111827;
+      letter-spacing:.02em;
+    }
+
+    /* ===== Map ===== */
+    .mapWrap{
+      display:flex;
+      flex-direction:column;
+      gap: 10px;
+    }
+    .hud{
+      display:flex; flex-wrap:wrap; gap: 8px; align-items:center;
+    }
+    .hud .pill b{ color:#111827; }
+
+    .btnRow{ display:flex; gap: 8px; flex-wrap:wrap; }
+
+    button, select, input{
+      font: inherit;
+      border:none;
+      border-radius: 14px;
+      padding: 12px 12px;
+      background: rgba(255,255,255,.94);
+      box-shadow: 0 6px 16px rgba(0,0,0,.10);
+      color: var(--ink);
+      min-height: var(--tap);
+      cursor:pointer;
+      touch-action: manipulation;
+    }
+    button.primary{
+      background: linear-gradient(135deg, rgba(255,95,168,.95), rgba(255,170,220,.95));
+      color:white;
+      box-shadow: 0 10px 18px rgba(255,95,168,.25);
+    }
+    button.ghost{ background: rgba(255,255,255,.70); }
+    button:active{ transform: translateY(1px) scale(.995); }
+    button:disabled{ opacity:.55; cursor:not-allowed; }
+
+    .map{
+      /* ★重要：固定min-heightが大きいとiPhoneで見切れる */
+      min-height: 420px;
+      border-radius: 18px;
+      background:
+        radial-gradient(520px 260px at 18% 15%, rgba(255,255,255,.90) 0%, rgba(255,255,255,0) 60%),
+        radial-gradient(520px 260px at 80% 0%, rgba(255,255,255,.86) 0%, rgba(255,255,255,0) 60%),
+        linear-gradient(135deg, rgba(255,224,240,.70), rgba(215,248,255,.70));
+      box-shadow: inset 0 0 0 2px rgba(255,255,255,.65);
+      position:relative;
+      overflow:hidden;
+      /* ★画面の高さに応じて縮む（iPhoneでマップが見える） */
+      height: min(58vh, 520px);
+    }
+    @media (max-width: 860px){
+      .map{
+        /* iPhone縦：マップを最優先で見せる */
+        height: min(52vh, 520px);
+        min-height: 300px;
+      }
+    }
+
+    .mapGridHint{
+      position:absolute; inset:0;
+      background-image:
+        linear-gradient(to right, rgba(255,255,255,.22) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255,255,255,.22) 1px, transparent 1px);
+      background-size: 60px 60px;
+      opacity:.45;
+      pointer-events:none;
+    }
+    .node{
+      position:absolute;
+      width: 104px;
+      transform: translate(-50%,-50%);
+      padding: 10px 10px;
+      border-radius: 18px;
+      background: rgba(255,255,255,.92);
+      box-shadow: 0 10px 18px rgba(0,0,0,.12);
+      text-align:center;
+      cursor:pointer;
+      touch-action: manipulation;
+    }
+    .node:active{ transform: translate(-50%,-50%) scale(.99); }
+    .node .emo{ font-size: 22px; line-height: 1; }
+    .node .name{ font-size: 12px; font-weight: 900; margin-top: 4px; }
+    .node .tag{ font-size: 11px; color: var(--muted); margin-top: 2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .node.locked{ opacity:.55; }
+    .node.here{
+      outline: 3px solid rgba(34,197,94,.60);
+      box-shadow: 0 14px 22px rgba(34,197,94,.14);
+    }
+    .node.revisit{ outline: 3px solid rgba(245,158,11,.55); }
+    .node .cost{
+      margin-top: 6px;
+      font-size: 11px;
+      color: var(--muted);
+      background: rgba(255,255,255,.7);
+      border-radius: 999px;
+      padding: 4px 8px;
+      display:inline-block;
+    }
+
+    /* ===== Right panel ===== */
+    .right{
+      display:flex;
+      flex-direction:column;
+      gap: 10px;
+      /* ★原因：min-height:520 がiPhoneで押し下げるので撤廃 */
+      min-height: 0;
+    }
+
+    .tasks{
+      display:flex;
+      flex-direction:column;
+      gap: 8px;
+    }
+
+    .taskBox{
+      background: rgba(255,255,255,.88);
+      border-radius: 18px;
+      box-shadow: 0 10px 18px rgba(0,0,0,.08);
+      padding: 10px;
+      display:flex; gap: 10px;
+      align-items:flex-start;
+    }
+    .taskBox .chk{
+      width: 26px; height: 26px; border-radius: 10px;
+      background: rgba(34,197,94,.12);
+      box-shadow: inset 0 0 0 2px rgba(34,197,94,.35);
+      display:grid; place-items:center;
+      flex: 0 0 auto;
+      margin-top: 2px;
+      font-weight: 1000;
+      color: rgba(34,197,94,.9);
+      font-size: 14px;
+    }
+    .taskBox.done .chk{
+      background: rgba(34,197,94,.22);
+      box-shadow: inset 0 0 0 2px rgba(34,197,94,.45);
+    }
+    .taskBox .tMain{ min-width:0; }
+    .taskBox .tTitle{ font-weight: 1000; font-size: 13px; line-height: 1.2; margin-bottom: 3px; }
+    .taskBox .tDesc{ font-size: 12px; color: var(--muted); line-height: 1.35; }
+
+    .inv{
+      background: rgba(255,255,255,.78);
+      border-radius: 18px;
+      box-shadow: 0 10px 18px rgba(0,0,0,.08);
+      padding: 10px;
+    }
+    .invRow{ display:flex; justify-content:space-between; gap: 8px; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    .invItems{ display:flex; flex-wrap:wrap; gap: 8px; }
+    .chip{
+      display:inline-flex; align-items:center; gap: 6px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.92);
+      box-shadow: 0 6px 14px rgba(0,0,0,.08);
+      font-size: 12px;
+      color: #111827;
+    }
+    .chip small{ color: var(--muted); font-weight: 700; }
+
+    .toast{
+      position:absolute;
+      left: 12px; right: 12px; bottom: 12px;
+      padding: 10px 12px;
+      background: rgba(255,255,255,.96);
+      border-radius: 16px;
+      box-shadow: var(--shadow2);
+      color: var(--ink);
+      font-size: 13px;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity .18s ease, transform .18s ease;
+      pointer-events:none;
+      z-index: 40;
+    }
+    .toast.show{ opacity: 1; transform: translateY(0); }
+
+    /* Modal */
+    .overlay{
+      position:fixed; inset:0;
+      background: rgba(17,24,39,.35);
+      display:none;
+      align-items:center; justify-content:center;
+      padding: 18px;
+      z-index: 200;
+    }
+    .overlay.show{ display:flex; }
+    .modal{
+      width: min(720px, 96vw);
+      max-height: min(92vh, 860px);
+      overflow:auto;
+      background: rgba(255,255,255,.96);
+      border-radius: 26px;
+      box-shadow: var(--shadow);
+      padding: 14px;
+    }
+    .modal h2{ margin: 6px 0 8px; font-size: 16px; }
+    .modal p{ margin: 6px 0; font-size: 13px; color: var(--muted); line-height: 1.5; }
+    .modal .grid{ display:grid; gap: 10px; grid-template-columns: 1fr 1fr; }
+    @media (max-width: 620px){ .modal .grid{ grid-template-columns: 1fr; } }
+    .modal .box{
+      background: rgba(249,250,251,.95);
+      border-radius: 18px;
+      padding: 10px;
+      box-shadow: inset 0 0 0 2px rgba(229,231,235,.9);
+    }
+    .row2{ display:flex; gap: 10px; flex-wrap:wrap; align-items:center; }
+
+    /* Win screen */
+    canvas#confetti{ position:absolute; inset:0; pointer-events:none; z-index: 90; }
+    .winOverlay{
+      position:absolute; inset:0;
+      display:none; align-items:center; justify-content:center;
+      background: radial-gradient(900px 600px at 50% 30%, rgba(255,255,255,.92), rgba(255,255,255,.72));
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: 120;
+    }
+    .winOverlay.show{ display:flex; }
+    .winCard{
+      width: min(560px, 92vw);
+      background: rgba(255,255,255,.97);
+      border-radius: 28px;
+      box-shadow: var(--shadow);
+      padding: 16px 14px;
+      text-align:center;
+      overflow: hidden;
+    }
+    .winMascot{ font-size: 62px; margin: 6px 0 2px; }
+    .winTitle{ font-weight: 1000; font-size: 20px; margin: 6px 0 6px; }
+    .winText{ color: var(--muted); font-size: 13px; margin: 0 0 10px; line-height: 1.45; }
+    .scoreBig{ font-size: 42px; font-weight: 1000; letter-spacing: .02em; margin: 8px 0 6px; }
+    .scoreNote{ font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+    .miniTable{ width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+    .miniTable td{ padding: 6px 8px; border-top: 1px solid rgba(229,231,235,.9); text-align:left; }
+    .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="topbar">
+      <div class="brand">
+        <div class="logo"><span>🛍️</span></div>
+        <div class="titlewrap">
+          <div class="title">おつかいクエスト（MET風）</div>
+          <div class="subtitle">MCIスクリーニング寄り：計画・ルール遵守・効率・自己修正をログ化</div>
+        </div>
+      </div>
+      <div class="pill">📱 iPhone最適化</div>
+    </div>
+
+    <div class="main">
+      <!-- LEFT -->
+      <div class="card mapWrap" id="leftCard">
+        <h3>マップ</h3>
+        <div class="hud">
+          <div class="pill">⏱ 残り <b id="timeLeft">--</b> 分</div>
+          <div class="pill">👣 移動 <b id="dist">0</b></div>
+          <div class="pill">💰 残金 <b id="money">--</b></div>
+          <div class="pill">⚠️ ルール違反 <b id="viol">0</b></div>
+        </div>
+        <div class="btnRow">
+          <button class="primary" id="startBtn">▶︎ スタート</button>
+          <button class="ghost" id="howBtn">❓ ルール/やり方</button>
+          <button class="ghost" id="planBtn" disabled>🧠 計画メモ</button>
+          <button class="ghost" id="exportBtn" disabled>📦 JSONエクスポート</button>
+        </div>
+
+        <div class="map" id="map" aria-label="マップ">
+          <div class="mapGridHint"></div>
+          <canvas id="confetti"></canvas>
+          <div class="winOverlay" id="winOverlay" aria-hidden="true">
+            <div class="winCard">
+              <div class="winMascot">🎉🐰✨</div>
+              <div class="winTitle">おつかい完了！</div>
+              <div class="winText" id="winText">すごい！計画通りにできたね！</div>
+              <div class="scoreBig"><span id="scoreBig">--</span></div>
+              <div class="scoreNote">総合スコア（0–100）＝効率・正確性・ルール遵守・計画性の合算</div>
+              <table class="miniTable">
+                <tr><td>タスク達成</td><td id="m_task"></td></tr>
+                <tr><td>ルール違反</td><td id="m_viol"></td></tr>
+                <tr><td>効率（移動/最短比）</td><td id="m_eff"></td></tr>
+                <tr><td>計画性（初動潜時）</td><td id="m_plan"></td></tr>
+                <tr><td>寄り道（不要購入/不要訪問）</td><td id="m_detour"></td></tr>
+              </table>
+              <div style="margin-top:12px; display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+                <button class="primary" id="againBtn">もう一回</button>
+                <button class="ghost" id="closeWinBtn">閉じる</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="toast" id="toast"></div>
+      </div>
+
+      <!-- RIGHT -->
+      <div class="card right">
+        <h3>やること（目標）</h3>
+        <div class="tasks" id="tasks"></div>
+
+        <div class="inv">
+          <div class="invRow"><span>🎒 持ち物</span><span class="mono" id="invMeta">0点</span></div>
+          <div class="invItems" id="invItems"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODALS -->
+  <div class="overlay" id="overlay">
+    <div class="modal" id="modal">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+        <h2 id="modalTitle">メニュー</h2>
+        <button class="ghost" id="closeModal">閉じる</button>
+      </div>
+      <div id="modalBody"></div>
+    </div>
+  </div>
+
+<script>
+/* ここから下のJSは、前回お渡しした「バグ修正済み完成HTML」と同一です */
+(() => {
+  const $ = (s, el=document) => el.querySelector(s);
+  const $$ = (s, el=document) => Array.from(el.querySelectorAll(s));
+  const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
+  const nowMs = ()=>performance.now();
+  const round1 = (x)=>Math.round(x*10)/10;
+
+  function beepSuccess(){
+    try{
+      const AC = window.AudioContext || window.webkitAudioContext;
+      const ac = new AC();
+      const t = ac.currentTime;
+      const seq = [523.25, 659.25, 783.99, 1046.5];
+      seq.forEach((f,i)=>{
+        const o=ac.createOscillator(), g=ac.createGain();
+        o.type="sine";
+        o.frequency.setValueAtTime(f, t+i*0.06);
+        g.gain.setValueAtTime(0.0001, t+i*0.06);
+        g.gain.exponentialRampToValueAtTime(0.22, t+i*0.06+0.01);
+        g.gain.exponentialRampToValueAtTime(0.0001, t+i*0.06+0.18);
+        o.connect(g).connect(ac.destination);
+        o.start(t+i*0.06);
+        o.stop(t+i*0.06+0.20);
+      });
+      setTimeout(()=>ac.close(), 900);
+    }catch(e){}
+  }
+  function beepError(){
+    try{
+      const AC = window.AudioContext || window.webkitAudioContext;
+      const ac = new AC();
+      const t = ac.currentTime;
+      const o=ac.createOscillator(), g=ac.createGain();
+      o.type="sine";
+      o.frequency.setValueAtTime(196, t);
+      o.frequency.exponentialRampToValueAtTime(130, t+0.22);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.18, t+0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t+0.22);
+      o.connect(g).connect(ac.destination);
+      o.start(t); o.stop(t+0.24);
+      setTimeout(()=>ac.close(), 600);
+    }catch(e){}
+  }
+
+  function toast(msg){
+    const el = $("#toast");
+    el.textContent = msg;
+    el.classList.add("show");
+    clearTimeout(toast._t);
+    toast._t = setTimeout(()=>el.classList.remove("show"), 1600);
+  }
+
+  const NODES = [
+    { id:"home", name:"おうち", emo:"🏠", tag:"開始地点", x:10, y:82, items:[] },
+    { id:"grocery", name:"スーパー", emo:"🛒", tag:"食べもの", x:28, y:62,
+      items:[
+        {id:"milk",  name:"ミルク", price:180, emo:"🥛"},
+        {id:"bread", name:"パン",   price:160, emo:"🍞"},
+        {id:"banana",name:"バナナ", price:140, emo:"🍌"},
+        {id:"ice",   name:"アイス", price:220, emo:"🍨"}
+      ]
+    },
+    { id:"pharmacy", name:"薬局", emo:"💊", tag:"くすり", x:58, y:72,
+      items:[
+        {id:"vitamin", name:"ビタミン", price:300, emo:"💛"},
+        {id:"bandage", name:"ばんそうこう", price:220, emo:"🩹"},
+        {id:"receipt", name:"処方せん受け取り", price:0, emo:"🧾"}
+      ]
+    },
+    { id:"post", name:"ポスト", emo:"📮", tag:"投函", x:76, y:52,
+      items:[ {id:"mail", name:"手紙を出す", price:0, emo:"✉️"} ]
+    },
+    { id:"bank", name:"ATM", emo:"🏧", tag:"お金", x:50, y:40,
+      items:[
+        {id:"withdraw500", name:"500円引き出し", price:-500, emo:"💵"},
+        {id:"withdraw1000", name:"1000円引き出し", price:-1000, emo:"💴"}
+      ]
+    },
+    { id:"bakery", name:"パン屋", emo:"🥐", tag:"香ばしい", x:18, y:30,
+      items:[ {id:"croissant", name:"クロワッサン", price:220, emo:"🥐"},
+              {id:"bagel", name:"ベーグル", price:200, emo:"🥯"} ]
+    },
+    { id:"flower", name:"お花屋", emo:"🌷", tag:"プレゼント", x:70, y:28,
+      items:[ {id:"flower", name:"お花", price:380, emo:"🌷"} ]
+    },
+    { id:"cafe", name:"カフェ", emo:"☕️", tag:"休憩", x:42, y:18,
+      items:[ {id:"coffee", name:"コーヒー", price:260, emo:"☕️"},
+              {id:"cake", name:"ケーキ", price:420, emo:"🍰"} ]
+    },
+    { id:"library", name:"図書館", emo:"📚", tag:"情報", x:86, y:18,
+      items:[ {id:"checklist", name:"メモ確認（無料）", price:0, emo:"📝"} ]
+    },
+  ];
+
+  const DIFFICULTIES = {
+    easy: {
+      label:"かんたん（練習）",
+      timeLimitMin: 6,
+      startMoney: 800,
+      tasks: [
+        { id:"t_milk", type:"buy", node:"grocery", item:"milk", must:true, text:"スーパーでミルクを買う" },
+        { id:"t_mail", type:"do",  node:"post",   item:"mail", must:true, text:"ポストで手紙を出す" },
+      ],
+      rules: { budgetCap: 800, forbidItems: ["ice","cake"], maxRevisitSameShop: 2, requireOrder: [], checkLimit: 999 }
+    },
+    normal: {
+      label:"ふつう（MCIスクリーニング）",
+      timeLimitMin: 8,
+      startMoney: 1000,
+      tasks: [
+        { id:"t_milk", type:"buy", node:"grocery", item:"milk", must:true, text:"スーパーでミルクを買う" },
+        { id:"t_bread",type:"buy", node:"grocery", item:"bread",must:true, text:"スーパーでパンを買う" },
+        { id:"t_rx",   type:"do",  node:"pharmacy", item:"receipt", must:true, text:"薬局で処方せんを受け取る" },
+        { id:"t_mail", type:"do",  node:"post", item:"mail", must:true, text:"ポストで手紙を出す" },
+      ],
+      rules: {
+        budgetCap: 1000,
+        forbidItems: ["ice","cake"],
+        maxRevisitSameShop: 2,
+        requireOrder: [ { before:"receipt", after:"mail", note:"『処方せん』の後に『手紙』（順序ルール）" } ],
+        checkLimit: 2
+      }
+    },
+    hard: {
+      label:"むずかしい（負荷増）",
+      timeLimitMin: 9,
+      startMoney: 1000,
+      tasks: [
+        { id:"t_milk", type:"buy", node:"grocery", item:"milk", must:true, text:"スーパーでミルクを買う" },
+        { id:"t_bread",type:"buy", node:"grocery", item:"bread",must:true, text:"スーパーでパンを買う" },
+        { id:"t_rx",   type:"do",  node:"pharmacy", item:"receipt", must:true, text:"薬局で処方せんを受け取る" },
+        { id:"t_mail", type:"do",  node:"post", item:"mail", must:true, text:"ポストで手紙を出す" },
+        { id:"t_flower", type:"buy", node:"flower", item:"flower", must:true, text:"お花屋でお花を買う" }
+      ],
+      rules: {
+        budgetCap: 1000,
+        forbidItems: ["ice","cake","coffee"],
+        maxRevisitSameShop: 1,
+        requireOrder: [
+          { before:"receipt", after:"mail", note:"処方せん→手紙（順序ルール）" },
+          { before:"bread", after:"flower", note:"パン→お花（順序ルール）" }
+        ],
+        checkLimit: 1
+      }
+    }
+  };
+
+  const state = {
+    configured: false,
+    running:false,
+    difficultyKey:"normal",
+    ageBand:"65-74",
+    startEpoch: null,
+    startPerf: null,
+    planStartPerf: null,
+    firstMovePerf: null,
+    timeLimitMin: 0,
+    timeLeftSec: 0,
+    timerId: null,
+
+    money: 0,
+    budgetCap: 0,
+    dist: 0,
+    currentNode: "home",
+    visitedCounts: {},
+
+    inv: [],
+    tasks: [],
+    rules: null,
+
+    violations: 0,
+    detourBuys: 0,
+    unnecessaryVisits: 0,
+    checklistViews: 0,
+
+    doneTaskIds: new Set(),
+    log: { meta:{}, events:[], summary:{} }
+  };
+
+  function logEvent(type, payload={}){
+    state.log.events.push({
+      t_ms: state.startPerf ? Math.round(nowMs() - state.startPerf) : 0,
+      type,
+      payload
+    });
+  }
+
+  const overlay = $("#overlay");
+  const modalTitle = $("#modalTitle");
+  const modalBody = $("#modalBody");
+  function showModal(title, html){
+    modalTitle.textContent = title;
+    modalBody.innerHTML = html;
+    overlay.classList.add("show");
+  }
+  function closeModal(){ overlay.classList.remove("show"); }
+  $("#closeModal").addEventListener("click", closeModal);
+  overlay.addEventListener("click", (e)=>{ if(e.target===overlay) closeModal(); });
+
+  const mapEl = $("#map");
+  function nodePosToPx(n){
+    const r = mapEl.getBoundingClientRect();
+    const pad = 20;
+    const x = pad + (r.width - pad*2) * (n.x/100);
+    const y = pad + (r.height - pad*2) * (n.y/100);
+    return {x,y};
+  }
+
+  function renderNodes(){
+    $$(".node", mapEl).forEach(n=>n.remove());
+    const cur = NODES.find(n=>n.id===state.currentNode);
+    const curPos = nodePosToPx(cur);
+
+    for(const n of NODES){
+      const pos = nodePosToPx(n);
+      const dx = (pos.x-curPos.x), dy=(pos.y-curPos.y);
+      const dist = Math.sqrt(dx*dx+dy*dy);
+      const steps = Math.max(1, Math.round(dist / 120));
+      const secCost = steps * 12;
+      const minCost = Math.ceil(secCost/60);
+
+      const div = document.createElement("div");
+      div.className = "node";
+      div.style.left = pos.x + "px";
+      div.style.top  = pos.y + "px";
+
+      const vCount = state.visitedCounts[n.id] || 0;
+      if(n.id===state.currentNode) div.classList.add("here");
+      if(vCount>0 && n.id!==state.currentNode) div.classList.add("revisit");
+      if(!state.running) div.classList.add("locked");
+
+      div.innerHTML = `
+        <div class="emo">${n.emo}</div>
+        <div class="name">${n.name}</div>
+        <div class="tag">${n.tag}</div>
+        <div class="cost">${n.id===state.currentNode ? "ここ" : `移動 ${minCost}分`}</div>
+      `;
+
+      div.addEventListener("click", ()=>{
+        if(!state.running){ toast("まずはスタートを押してね"); return; }
+        if(n.id===state.currentNode){ openShop(n.id); return; }
+        moveTo(n.id);
+      });
+
+      mapEl.appendChild(div);
+    }
+  }
+
+  function taskHintText(t){
+    const node = NODES.find(n=>n.id===t.node);
+    const item = node.items.find(x=>x.id===t.item);
+    const p = (item && item.price>0) ? `（${item.price}円）` : "";
+    return `場所：${node.emo} ${node.name}  ${p}`;
+  }
+  function renderTasks(){
+    const host = $("#tasks");
+    host.innerHTML = "";
+    for(const t of state.tasks){
+      const done = state.doneTaskIds.has(t.id);
+      const box = document.createElement("div");
+      box.className = "taskBox" + (done ? " done" : "");
+      box.innerHTML = `
+        <div class="chk">${done ? "✓" : ""}</div>
+        <div class="tMain">
+          <div class="tTitle">${t.text}</div>
+          <div class="tDesc">${taskHintText(t)}</div>
+        </div>
+      `;
+      host.appendChild(box);
+    }
+  }
+
+  function renderInv(){
+    $("#invMeta").textContent = `${state.inv.length}点`;
+    const host = $("#invItems");
+    host.innerHTML = "";
+    if(state.inv.length===0){
+      const d=document.createElement("div");
+      d.className="chip";
+      d.textContent = "（まだ何もないよ）";
+      host.appendChild(d);
+      return;
+    }
+    for(const it of state.inv){
+      const c=document.createElement("div");
+      c.className="chip";
+      c.innerHTML = `${it.emo} ${it.name} <small>${it.price>=0?it.price+"円":"+"+Math.abs(it.price)+"円"}</small>`;
+      host.appendChild(c);
+    }
+  }
+
+  function renderHUD(){
+    $("#money").textContent = `${state.money}円`;
+    $("#dist").textContent = `${state.dist}`;
+    $("#viol").textContent = `${state.violations}`;
+    $("#timeLeft").textContent = `${Math.ceil(state.timeLeftSec/60)}`;
+  }
+
+  function tick(){
+    state.timeLeftSec = Math.max(0, state.timeLeftSec - 1);
+    renderHUD();
+    if(state.timeLeftSec<=0){
+      endGame(false, "時間切れ…！でもよくがんばったね。");
+    }
+  }
+
+  function labelOfItem(itemId){
+    for(const n of NODES){
+      const it = (n.items||[]).find(x=>x.id===itemId);
+      if(it) return it.name;
+    }
+    return itemId;
+  }
+  function hasItem(itemId){ return state.inv.some(x=>x.itemId===itemId); }
+
+  function showPlan(){
+    const html = `
+      <p>ここは「計画を立てる」ためのメモです（自由記述）。</p>
+      <div class="box">
+        <textarea id="planText" style="width:100%; min-height:140px; border:none; border-radius:16px; padding:10px; font:inherit; box-shadow: inset 0 0 0 2px rgba(229,231,235,.95);"></textarea>
+      </div>
+      <div class="row2" style="margin-top:10px;">
+        <button class="primary" id="savePlan">保存</button>
+        <button class="ghost" id="closePlan">閉じる</button>
+      </div>
+    `;
+    showModal("🧠 計画メモ", html);
+    $("#planText").value = state.log.meta.plan_text || "";
+    $("#savePlan").onclick = ()=>{
+      const v = $("#planText").value;
+      state.log.meta.plan_text = v;
+      logEvent("plan_save", { length: v.length });
+      toast("メモを保存したよ");
+      closeModal();
+    };
+    $("#closePlan").onclick = closeModal;
+    logEvent("plan_open", {});
+  }
+
+  function addViolation(code, msg){
+    state.violations++;
+    logEvent("violation", { code, msg });
+    beepError();
+    toast(`⚠️ ${msg}`);
+    renderHUD();
+  }
+
+  function openShop(nodeId){
+    const node = NODES.find(n=>n.id===nodeId);
+
+    if(nodeId!=="home"){
+      const requiredNodes = new Set(state.tasks.map(t=>t.node));
+      if(!requiredNodes.has(nodeId)){
+        state.unnecessaryVisits++;
+        logEvent("detour_visit", { nodeId });
+      }
+    }
+
+    if(nodeId==="library"){
+      state.checklistViews++;
+      logEvent("checklist_view", { count: state.checklistViews });
+      if(state.rules.checkLimit!=null && state.checklistViews > state.rules.checkLimit){
+        addViolation("CHECKLIST_OVERUSE", "メモ確認をしすぎたよ（回数上限）");
+      }
+    }
+
+    const items = node.items || [];
+    const itemList = items.map(it=>{
+      const priceLabel = it.price===0 ? "無料" : (it.price>0 ? `${it.price}円` : `+${Math.abs(it.price)}円`);
+      return `
+        <div class="taskBox" style="align-items:center;">
+          <div class="chk" style="background:rgba(255,95,168,.10); box-shadow: inset 0 0 0 2px rgba(255,95,168,.25); color:#ff5fa8;">${it.emo}</div>
+          <div class="tMain">
+            <div class="tTitle">${it.name}</div>
+            <div class="tDesc">${priceLabel}</div>
+          </div>
+          <div style="margin-left:auto;">
+            <button class="primary" data-buy="${it.id}">実行</button>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    const html = `
+      <p><b>${node.emo} ${node.name}</b> に到着！なにをしますか？</p>
+      <div class="box">
+        ${items.length? itemList : `<p style="margin:0;color:var(--muted);font-size:13px;">ここでは特にできることがないよ。</p>`}
+      </div>
+      <div class="row2" style="margin-top:10px;">
+        <button class="ghost" id="closeShop">閉じる</button>
+      </div>
+    `;
+    showModal(`${node.emo} ${node.name}`, html);
+    logEvent("shop_open", { nodeId });
+
+    $$("button[data-buy]").forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        const itemId = btn.getAttribute("data-buy");
+        doAction(nodeId, itemId);
+      });
+    });
+    $("#closeShop").onclick = closeModal;
+  }
+
+  function doAction(nodeId, itemId){
+    const node = NODES.find(n=>n.id===nodeId);
+    const item = node.items.find(x=>x.id===itemId);
+    if(!item){ toast("できない操作だよ"); return; }
+
+    if(state.rules.forbidItems && state.rules.forbidItems.includes(itemId)){
+      state.detourBuys++;
+      addViolation("FORBIDDEN_PURCHASE", `買わない約束のものを買っちゃった（${item.name}）`);
+    }
+
+    const newMoney = state.money - item.price;
+    if(item.price>0 && newMoney < 0){
+      addViolation("INSUFFICIENT_FUNDS", "お金が足りないのに買おうとした");
+      beepError();
+      toast("お金が足りないよ…（ATMに行く？）");
+      logEvent("action_fail", { nodeId, itemId, reason:"insufficient_funds" });
+      return;
+    }
+
+    state.money = newMoney;
+
+    state.inv.push({
+      itemId,
+      name: item.name,
+      price: item.price,
+      emo: item.emo,
+      nodeId,
+      t_ms: state.startPerf ? Math.round(nowMs() - state.startPerf) : 0
+    });
+    logEvent("action", { nodeId, itemId, moneyAfter: state.money });
+
+    const spent = state.log.meta.startMoney - state.money;
+    if(state.rules.budgetCap!=null && spent > state.rules.budgetCap){
+      addViolation("BUDGET_CAP_EXCEEDED", "予算上限を超えた");
+    }
+
+    checkTaskCompletion();
+    checkOrderRules(itemId);
+
+    renderInv(); renderTasks(); renderHUD();
+    beepSuccess();
+    toast(`${item.emo} ${item.name} を実行したよ`);
+  }
+
+  function checkOrderRules(lastItemId){
+    if(!state.rules.requireOrder) return;
+    for(const r of state.rules.requireOrder){
+      if(r.after === lastItemId){
+        const beforeDone = hasItem(r.before);
+        if(!beforeDone){
+          addViolation("SEQUENCE_ERROR", `順序ルール違反：先に「${labelOfItem(r.before)}」をしてね`);
+        }
+      }
+    }
+  }
+
+  function checkTaskCompletion(){
+    for(const t of state.tasks){
+      if(state.doneTaskIds.has(t.id)) continue;
+      if(hasItem(t.item)){
+        state.doneTaskIds.add(t.id);
+        logEvent("task_complete", { taskId: t.id });
+      }
+    }
+    if(state.doneTaskIds.size === state.tasks.length){
+      endGame(true, "全部クリア！ほんとにすごい！");
+    }
+  }
+
+  function distBetween(aId, bId){
+    const a=NODES.find(n=>n.id===aId), b=NODES.find(n=>n.id===bId);
+    const dx = a.x-b.x, dy=a.y-b.y;
+    return Math.sqrt(dx*dx+dy*dy);
+  }
+  function moveCostSec(aId,bId){
+    const d = distBetween(aId,bId);
+    const steps = Math.max(1, Math.round(d / 10));
+    return steps * 12;
+  }
+
+  function moveTo(nodeId){
+    if(!state.running) return;
+    if(!state.firstMovePerf){
+      state.firstMovePerf = nowMs();
+      logEvent("first_move", { planLatencyMs: Math.round(state.firstMovePerf - state.planStartPerf) });
+    }
+
+    const cost = moveCostSec(state.currentNode, nodeId);
+    const nextCount = (state.visitedCounts[nodeId]||0) + 1;
+    const maxRev = state.rules.maxRevisitSameShop;
+    if(maxRev!=null && nextCount > maxRev){
+      addViolation("REVISIT_RULE", `同じ場所に戻りすぎた（${NODES.find(n=>n.id===nodeId).name}）`);
+    }
+
+    state.timeLeftSec = Math.max(0, state.timeLeftSec - cost);
+    state.dist += round1(distBetween(state.currentNode, nodeId));
+    state.currentNode = nodeId;
+    state.visitedCounts[nodeId] = nextCount;
+    logEvent("move", { to: nodeId, costSec: Math.round(cost), timeLeftSec: Math.round(state.timeLeftSec) });
+
+    renderHUD();
+    renderNodes();
+    openShop(nodeId);
+
+    if(state.timeLeftSec<=0){
+      endGame(false, "時間切れ…！でもよくがんばったね。");
+    }
+  }
+
+  function permute(arr){
+    const a = arr.slice();
+    const c = new Array(a.length).fill(0);
+    const out = [a.slice()];
+    let i = 0;
+    while(i < a.length){
+      if(c[i] < i){
+        if(i % 2 === 0){ [a[0], a[i]] = [a[i], a[0]]; }
+        else { [a[c[i]], a[i]] = [a[i], a[c[i]]]; }
+        out.push(a.slice());
+        c[i]++; i = 0;
+      } else {
+        c[i] = 0; i++;
+      }
+      if(out.length > 60000) break;
+    }
+    return out;
+  }
+  function computeBaseline(){
+    const requiredNodes = Array.from(new Set(state.tasks.map(t=>t.node)));
+    const start = "home";
+    const perms = permute(requiredNodes);
+    let best = Infinity;
+    for(const p of perms){
+      let d = 0;
+      let cur = start;
+      for(const nId of p){ d += distBetween(cur, nId); cur = nId; }
+      if(d < best) best = d;
+    }
+    return { requiredNodes, bestDist: best };
+  }
+
+  function ageBandAdjustment(ageBand){
+    switch(ageBand){
+      case "50-64": return 0;
+      case "65-74": return +2;
+      case "75-84": return +4;
+      case "85+":   return +6;
+      default: return 0;
+    }
+  }
+  function computeScore(){
+    const d = DIFFICULTIES[state.difficultyKey];
+    const baseline = computeBaseline();
+    const bestDist = baseline.bestDist;
+    const actualDist = Math.max(0.1, state.dist);
+
+    const taskRate = state.doneTaskIds.size / state.tasks.length;
+    const viol = state.violations;
+    const detour = state.detourBuys + state.unnecessaryVisits;
+    const effRatio = actualDist / Math.max(0.1, bestDist);
+    const effScore01 = clamp(1.0 - (effRatio - 1.0) * 0.55, 0, 1);
+
+    const planLatSec = state.firstMovePerf ? ((state.firstMovePerf - state.planStartPerf)/1000) : (d.timeLimitMin*60);
+    let planScore01 = 1.0;
+    if(planLatSec <= 8) planScore01 = 1.0;
+    else if(planLatSec <= 35) planScore01 = clamp(1.0 - (planLatSec-8)/(35-8)*0.7, 0, 1);
+    else planScore01 = clamp(0.3 - (planLatSec-35)/35*0.3, 0, 1);
+
+    const timeRem01 = clamp(state.timeLeftSec / (d.timeLimitMin*60), 0, 1);
+    const checkOver = (state.rules.checkLimit!=null) ? Math.max(0, state.checklistViews - state.rules.checkLimit) : 0;
+
+    let score =
+      40 * taskRate +
+      22 * effScore01 +
+      18 * clamp(1 - viol*0.18, 0, 1) +
+      10 * planScore01 +
+      6  * timeRem01 +
+      4  * clamp(1 - detour*0.22, 0, 1);
+
+    score -= checkOver * 2.5;
+    score = clamp(score, 0, 100);
+
+    const ageAdjust = ageBandAdjustment(state.ageBand);
+    const ageAdjusted = clamp(score + ageAdjust, 0, 100);
+
+    return {
+      taskRate, viol, detour,
+      effRatio: round1(effRatio),
+      planLatencySec: Math.round(planLatSec),
+      timeRemainingSec: Math.round(state.timeLeftSec),
+      checklistViews: state.checklistViews,
+      baselineBestDist: round1(bestDist),
+      actualDist: round1(actualDist),
+      rawScore: Math.round(score),
+      ageAdjustedScore: Math.round(ageAdjusted),
+      ageAdjustPoints: ageAdjust
+    };
+  }
+
+  function summarizeErrors(events){
+    const out = {};
+    for(const e of events){
+      if(e.type==="violation"){
+        const c = e.payload.code || "UNKNOWN";
+        out[c] = (out[c]||0) + 1;
+      }
+    }
+    return out;
+  }
+
+  const confetti = $("#confetti");
+  const ctx = confetti.getContext("2d");
+  let confAnim=null, particles=[];
+  function resizeConfetti(){
+    const r = mapEl.getBoundingClientRect();
+    const dpr = Math.max(1, window.devicePixelRatio||1);
+    confetti.width = Math.floor(r.width*dpr);
+    confetti.height = Math.floor(r.height*dpr);
+    confetti.style.width = r.width+"px";
+    confetti.style.height = r.height+"px";
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+  window.addEventListener("resize", ()=>{ resizeConfetti(); renderNodes(); }, {passive:true});
+
+  function startConfetti(){
+    resizeConfetti();
+    particles=[];
+    const r = mapEl.getBoundingClientRect();
+    const em = ["✨","🎉","🌸","⭐️","💖","🍬"];
+    for(let i=0;i<120;i++){
+      particles.push({
+        x: Math.random()*r.width,
+        y: -20 - Math.random()*r.height*0.4,
+        vx:(Math.random()*2-1)*0.8,
+        vy:2.2+Math.random()*2.8,
+        rot:Math.random()*Math.PI*2,
+        vr:(Math.random()*2-1)*0.08,
+        size:12+Math.random()*14,
+        emo: em[Math.floor(Math.random()*em.length)],
+        life: 220+Math.random()*140
+      });
+    }
+    cancelAnimationFrame(confAnim);
+    const tick=()=>{
+      ctx.clearRect(0,0,confetti.width,confetti.height);
+      for(const p of particles){
+        p.x+=p.vx; p.y+=p.vy; p.vy+=0.02; p.rot+=p.vr; p.life-=1;
+        ctx.save();
+        ctx.translate(p.x,p.y);
+        ctx.rotate(p.rot);
+        ctx.font = `${p.size}px system-ui, Apple Color Emoji, Segoe UI Emoji`;
+        ctx.textAlign="center"; ctx.textBaseline="middle";
+        ctx.fillText(p.emo,0,0);
+        ctx.restore();
+      }
+      particles = particles.filter(p=>p.life>0 && p.y < r.height+80);
+      if(particles.length>0) confAnim=requestAnimationFrame(tick);
+      else ctx.clearRect(0,0,confetti.width,confetti.height);
+    };
+    tick();
+  }
+  function stopConfetti(){
+    cancelAnimationFrame(confAnim);
+    confAnim=null;
+    ctx.clearRect(0,0,confetti.width,confetti.height);
+  }
+
+  function endGame(success, msg){
+    if(!state.running) return;
+    state.running = false;
+    clearInterval(state.timerId);
+    state.timerId = null;
+
+    const comp = computeScore();
+    state.log.summary = {
+      success,
+      endedEpoch: Date.now(),
+      message: msg,
+      metrics: comp,
+      errorCounts: summarizeErrors(state.log.events),
+      inventory: state.inv.slice(),
+      visitedCounts: {...state.visitedCounts}
+    };
+    logEvent("end", { success, metrics: comp });
+
+    renderHUD();
+    renderNodes();
+
+    $("#winText").textContent = msg;
+    $("#scoreBig").textContent = `${comp.ageAdjustedScore}`;
+    $("#m_task").textContent = `${Math.round(comp.taskRate*100)}%`;
+    $("#m_viol").textContent = `${comp.viol}`;
+    $("#m_eff").textContent = `${comp.effRatio}×`;
+    $("#m_plan").textContent = `${comp.planLatencySec}s`;
+    $("#m_detour").textContent = `${comp.detour}`;
+
+    $("#winOverlay").classList.add("show");
+    $("#winOverlay").setAttribute("aria-hidden","false");
+
+    startConfetti();
+    beepSuccess();
+    toast("結果が出ました（JSONエクスポート可）");
+  }
+
+  function showHow(){
+    const d = DIFFICULTIES[state.difficultyKey];
+    const rules = state.rules || d.rules;
+    const orderTxt = (rules.requireOrder && rules.requireOrder.length)
+      ? `<ul>${rules.requireOrder.map(r=>`<li>${r.note}</li>`).join("")}</ul>`
+      : `<p style="margin:0;">（順序ルールなし）</p>`;
+    const forbidTxt = (rules.forbidItems && rules.forbidItems.length)
+      ? rules.forbidItems.map(x=>`<span class="chip">${labelOfItem(x)}</span>`).join(" ")
+      : "なし";
+
+    const html = `
+      <p><b>目的：</b>「目標の保持」「計画」「ルール遵守」「効率」「自己修正」をゲームで測ります。</p>
+      <div class="grid">
+        <div class="box">
+          <p style="margin:0 0 6px;"><b>操作</b></p>
+          <ul style="margin:0; padding-left:18px; color:var(--muted); font-size:13px; line-height:1.5;">
+            <li>マップ上の場所をタップ → 移動（時間が減ります）</li>
+            <li>到着したら「実行」ボタンで購入/手続き</li>
+            <li>タスクが全部終わればクリア</li>
+          </ul>
+        </div>
+        <div class="box">
+          <p style="margin:0 0 6px;"><b>ルール</b></p>
+          <ul style="margin:0; padding-left:18px; color:var(--muted); font-size:13px; line-height:1.5;">
+            <li>予算上限：${rules.budgetCap ?? d.startMoney}円</li>
+            <li>同じ場所の再訪：最大 ${rules.maxRevisitSameShop ?? "∞"} 回</li>
+            <li>メモ確認（図書館）：上限 ${rules.checkLimit ?? "制限なし"} 回</li>
+          </ul>
+        </div>
+        <div class="box">
+          <p style="margin:0 0 6px;"><b>順序ルール</b></p>
+          ${orderTxt}
+        </div>
+        <div class="box">
+          <p style="margin:0 0 6px;"><b>買わないもの（寄り道）</b></p>
+          <div style="display:flex; flex-wrap:wrap; gap:8px;">${forbidTxt}</div>
+        </div>
+      </div>
+      <div class="row2" style="margin-top:10px;">
+        <button class="primary" id="howClose">OK</button>
+      </div>
+    `;
+    showModal("❓ ルール / やり方", html);
+    $("#howClose").onclick = closeModal;
+    logEvent("how_open", {});
+  }
+
+  function exportJSON(){
+    const blob = new Blob([JSON.stringify(state.log, null, 2)], {type:"application/json"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const ts = new Date(state.log.meta.startEpoch).toISOString().replace(/[:.]/g,"-");
+    a.download = `met_quest_${state.log.meta.difficulty}_${ts}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url), 1000);
+    logEvent("export_json", {});
+    toast("JSONを保存しました");
+  }
+
+  function setupGame(dKey, ageBand){
+    const d = DIFFICULTIES[dKey];
+    state.difficultyKey = dKey;
+    state.ageBand = ageBand;
+
+    state.running = false;
+    state.startEpoch = Date.now();
+    state.startPerf = null;
+    state.planStartPerf = null;
+    state.firstMovePerf = null;
+
+    state.timeLimitMin = d.timeLimitMin;
+    state.timeLeftSec = d.timeLimitMin * 60;
+
+    state.money = d.startMoney;
+    state.budgetCap = d.rules.budgetCap ?? d.startMoney;
+
+    state.dist = 0;
+    state.currentNode = "home";
+    state.visitedCounts = { home: 1 };
+
+    state.inv = [];
+    state.tasks = d.tasks.map(x=>({...x}));
+    state.rules = JSON.parse(JSON.stringify(d.rules));
+
+    state.violations = 0;
+    state.detourBuys = 0;
+    state.unnecessaryVisits = 0;
+    state.checklistViews = 0;
+
+    state.doneTaskIds = new Set();
+
+    state.log = {
+      meta: {
+        version: "met-quest-web-1.0",
+        difficulty: dKey,
+        ageBand,
+        startEpoch: state.startEpoch,
+        timeLimitMin: d.timeLimitMin,
+        startMoney: d.startMoney,
+        rules: state.rules,
+        tasks: state.tasks
+      },
+      events: [],
+      summary: {}
+    };
+
+    if(state.timerId) clearInterval(state.timerId);
+    state.timerId = null;
+
+    $("#exportBtn").disabled = true;
+    $("#planBtn").disabled = true;
+
+    state.configured = true;
+
+    renderTasks(); renderInv(); renderHUD(); renderNodes();
+    toast("準備OK：スタートを押して開始できます");
+  }
+
+  function startGame(){
+    if(state.running) return;
+    state.running = true;
+    state.startPerf = nowMs();
+    state.planStartPerf = state.startPerf;
+
+    logEvent("start", { difficulty: state.difficultyKey, ageBand: state.ageBand });
+
+    if(state.timerId) clearInterval(state.timerId);
+    state.timerId = setInterval(tick, 1000);
+
+    $("#exportBtn").disabled = false;
+    $("#planBtn").disabled = false;
+
+    toast("スタート！まずは計画してから動こう（初動潜時も記録）");
+    renderNodes();
+  }
+
+  function showStartConfig(){
+    const html = `
+      <p>難易度と年齢帯を選んでスタートしてください。</p>
+      <div class="grid">
+        <div class="box">
+          <p style="margin:0 0 8px;"><b>難易度</b></p>
+          <select id="diffSel" style="width:100%;">
+            <option value="easy">かんたん（練習）</option>
+            <option value="normal" selected>ふつう（MCIスクリーニング）</option>
+            <option value="hard">むずかしい（負荷増）</option>
+          </select>
+        </div>
+        <div class="box">
+          <p style="margin:0 0 8px;"><b>年齢帯</b></p>
+          <select id="ageSel" style="width:100%;">
+            <option value="50-64">50–64</option>
+            <option value="65-74" selected>65–74</option>
+            <option value="75-84">75–84</option>
+            <option value="85+">85+</option>
+          </select>
+        </div>
+      </div>
+      <div class="row2" style="margin-top:10px;">
+        <button class="primary" id="cfgOk">この設定で開始</button>
+        <button class="ghost" id="cfgCancel">キャンセル</button>
+      </div>
+    `;
+    showModal("▶︎ ゲーム設定", html);
+    $("#diffSel").value = state.difficultyKey || "normal";
+    $("#ageSel").value = state.ageBand || "65-74";
+    $("#cfgOk").onclick = ()=>{
+      setupGame($("#diffSel").value, $("#ageSel").value);
+      closeModal();
+      startGame();
+    };
+    $("#cfgCancel").onclick = closeModal;
+  }
+
+  $("#howBtn").addEventListener("click", showHow);
+  $("#planBtn").addEventListener("click", showPlan);
+  $("#exportBtn").addEventListener("click", exportJSON);
+
+  $("#startBtn").addEventListener("click", ()=>{
+    if(!state.configured){
+      showStartConfig();
+      return;
+    }
+    if(!state.running) startGame();
+  });
+
+  $("#againBtn").addEventListener("click", ()=>{
+    $("#winOverlay").classList.remove("show");
+    $("#winOverlay").setAttribute("aria-hidden","true");
+    stopConfetti();
+    showStartConfig();
+  });
+  $("#closeWinBtn").addEventListener("click", ()=>{
+    $("#winOverlay").classList.remove("show");
+    $("#winOverlay").setAttribute("aria-hidden","true");
+    stopConfetti();
+  });
+
+  setupGame("normal","65-74");
+  showStartConfig();
+})();
+</script>
+</body>
+</html>
