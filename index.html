@@ -13,6 +13,11 @@
       --shadow2: 0 6px 18px rgba(0,0,0,.10);
 
       --tap: 44px;
+
+      /* ★ノード（マップの場所アイコン）サイズをCSS変数化 */
+      --nodeW: 104px;
+      --nodePad: 10px;
+
       --safeTop: env(safe-area-inset-top);
       --safeBot: env(safe-area-inset-bottom);
       --safeL: env(safe-area-inset-left);
@@ -29,14 +34,11 @@
         radial-gradient(900px 500px at 85% 0%, #ffffff 0%, rgba(255,255,255,0) 60%),
         linear-gradient(135deg, var(--bg1), var(--bg2));
       -webkit-tap-highlight-color: transparent;
-      /* ★重要：iPhoneで見切れた時にスクロールできるように */
       overflow-y: auto;
-      overscroll-behavior: auto;
     }
     *{ box-sizing:border-box; }
 
     .app{
-      /* ★重要：height:100%だと「はみ出した内容が見えない」ことがある */
       min-height:100%;
       height:auto;
       padding: calc(10px + var(--safeTop)) calc(10px + var(--safeR)) calc(10px + var(--safeBot)) calc(10px + var(--safeL));
@@ -55,7 +57,7 @@
       display:flex; align-items:center; justify-content:space-between; gap: 10px;
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
-      position: sticky; /* ★iPhoneで上に固定 */
+      position: sticky;
       top: calc(0px + var(--safeTop));
       z-index: 50;
     }
@@ -89,8 +91,6 @@
       grid-template-columns: 1.25fr 0.95fr;
       align-items:start;
     }
-
-    /* ★iPhone/小画面：縦積み */
     @media (max-width: 860px){
       .main{ grid-template-columns: 1fr; }
     }
@@ -113,16 +113,9 @@
     }
 
     /* ===== Map ===== */
-    .mapWrap{
-      display:flex;
-      flex-direction:column;
-      gap: 10px;
-    }
-    .hud{
-      display:flex; flex-wrap:wrap; gap: 8px; align-items:center;
-    }
+    .mapWrap{ display:flex; flex-direction:column; gap: 10px; }
+    .hud{ display:flex; flex-wrap:wrap; gap: 8px; align-items:center; }
     .hud .pill b{ color:#111827; }
-
     .btnRow{ display:flex; gap: 8px; flex-wrap:wrap; }
 
     button, select, input{
@@ -147,8 +140,7 @@
     button:disabled{ opacity:.55; cursor:not-allowed; }
 
     .map{
-      /* ★重要：固定min-heightが大きいとiPhoneで見切れる */
-      min-height: 420px;
+      min-height: 320px;
       border-radius: 18px;
       background:
         radial-gradient(520px 260px at 18% 15%, rgba(255,255,255,.90) 0%, rgba(255,255,255,0) 60%),
@@ -157,15 +149,7 @@
       box-shadow: inset 0 0 0 2px rgba(255,255,255,.65);
       position:relative;
       overflow:hidden;
-      /* ★画面の高さに応じて縮む（iPhoneでマップが見える） */
-      height: min(58vh, 520px);
-    }
-    @media (max-width: 860px){
-      .map{
-        /* iPhone縦：マップを最優先で見せる */
-        height: min(52vh, 520px);
-        min-height: 300px;
-      }
+      height: min(52vh, 520px);
     }
 
     .mapGridHint{
@@ -173,32 +157,45 @@
       background-image:
         linear-gradient(to right, rgba(255,255,255,.22) 1px, transparent 1px),
         linear-gradient(to bottom, rgba(255,255,255,.22) 1px, transparent 1px);
-      background-size: 60px 60px;
+      background-size: 70px 70px; /* ★少し広く */
       opacity:.45;
       pointer-events:none;
     }
+
+    /* ===== Node (場所アイコン) ===== */
     .node{
       position:absolute;
-      width: 104px;
+      width: var(--nodeW);                 /* ★可変 */
       transform: translate(-50%,-50%);
-      padding: 10px 10px;
+      padding: var(--nodePad);             /* ★可変 */
       border-radius: 18px;
       background: rgba(255,255,255,.92);
       box-shadow: 0 10px 18px rgba(0,0,0,.12);
       text-align:center;
       cursor:pointer;
       touch-action: manipulation;
+      user-select:none;
     }
+
     .node:active{ transform: translate(-50%,-50%) scale(.99); }
+
     .node .emo{ font-size: 22px; line-height: 1; }
-    .node .name{ font-size: 12px; font-weight: 900; margin-top: 4px; }
-    .node .tag{ font-size: 11px; color: var(--muted); margin-top: 2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .node.locked{ opacity:.55; }
-    .node.here{
-      outline: 3px solid rgba(34,197,94,.60);
-      box-shadow: 0 14px 22px rgba(34,197,94,.14);
+    .node .name{
+      font-size: 12px;
+      font-weight: 900;
+      margin-top: 4px;
+      white-space: nowrap;                 /* ★1行固定 */
+      overflow: hidden;
+      text-overflow: ellipsis;             /* ★はみ出し省略 */
     }
-    .node.revisit{ outline: 3px solid rgba(245,158,11,.55); }
+    .node .tag{
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 2px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
     .node .cost{
       margin-top: 6px;
       font-size: 11px;
@@ -207,23 +204,41 @@
       border-radius: 999px;
       padding: 4px 8px;
       display:inline-block;
+      white-space: nowrap;
+    }
+
+    .node.locked{ opacity:.55; }
+    .node.here{
+      outline: 3px solid rgba(34,197,94,.60);
+      box-shadow: 0 14px 22px rgba(34,197,94,.14);
+    }
+    .node.revisit{ outline: 3px solid rgba(245,158,11,.55); }
+
+    /* ★小画面ではノードを縮小して“重なり”を防ぐ */
+    @media (max-width: 430px){
+      :root{
+        --nodeW: 82px;
+        --nodePad: 8px;
+      }
+      .node .emo{ font-size: 18px; }
+      .node .name{ font-size: 11px; }
+      .node .tag{ display:none; }          /* ★タグは隠して詰まり回避 */
+      .node .cost{ font-size: 10px; padding: 3px 7px; }
+      .mapGridHint{ background-size: 84px 84px; }
+    }
+
+    /* ★さらに狭い端末（SEなど） */
+    @media (max-width: 360px){
+      :root{
+        --nodeW: 76px;
+        --nodePad: 7px;
+      }
+      .map{ height: min(50vh, 480px); }
     }
 
     /* ===== Right panel ===== */
-    .right{
-      display:flex;
-      flex-direction:column;
-      gap: 10px;
-      /* ★原因：min-height:520 がiPhoneで押し下げるので撤廃 */
-      min-height: 0;
-    }
-
-    .tasks{
-      display:flex;
-      flex-direction:column;
-      gap: 8px;
-    }
-
+    .right{ display:flex; flex-direction:column; gap: 10px; min-height:0; }
+    .tasks{ display:flex; flex-direction:column; gap: 8px; }
     .taskBox{
       background: rgba(255,255,255,.88);
       border-radius: 18px;
@@ -431,7 +446,6 @@
   </div>
 
 <script>
-/* ここから下のJSは、前回お渡しした「バグ修正済み完成HTML」と同一です */
 (() => {
   const $ = (s, el=document) => el.querySelector(s);
   const $$ = (s, el=document) => Array.from(el.querySelectorAll(s));
@@ -485,9 +499,10 @@
     toast._t = setTimeout(()=>el.classList.remove("show"), 1600);
   }
 
+  /* ★小画面で重なりにくいよう、座標を少し散らした（スマホ優先） */
   const NODES = [
-    { id:"home", name:"おうち", emo:"🏠", tag:"開始地点", x:10, y:82, items:[] },
-    { id:"grocery", name:"スーパー", emo:"🛒", tag:"食べもの", x:28, y:62,
+    { id:"home", name:"おうち", emo:"🏠", tag:"開始地点", x:10, y:84, items:[] },
+    { id:"grocery", name:"スーパー", emo:"🛒", tag:"食べもの", x:28, y:66,
       items:[
         {id:"milk",  name:"ミルク", price:180, emo:"🥛"},
         {id:"bread", name:"パン",   price:160, emo:"🍞"},
@@ -495,34 +510,34 @@
         {id:"ice",   name:"アイス", price:220, emo:"🍨"}
       ]
     },
-    { id:"pharmacy", name:"薬局", emo:"💊", tag:"くすり", x:58, y:72,
+    { id:"pharmacy", name:"薬局", emo:"💊", tag:"くすり", x:60, y:74,
       items:[
         {id:"vitamin", name:"ビタミン", price:300, emo:"💛"},
         {id:"bandage", name:"ばんそうこう", price:220, emo:"🩹"},
         {id:"receipt", name:"処方せん受け取り", price:0, emo:"🧾"}
       ]
     },
-    { id:"post", name:"ポスト", emo:"📮", tag:"投函", x:76, y:52,
+    { id:"post", name:"ポスト", emo:"📮", tag:"投函", x:82, y:54,
       items:[ {id:"mail", name:"手紙を出す", price:0, emo:"✉️"} ]
     },
-    { id:"bank", name:"ATM", emo:"🏧", tag:"お金", x:50, y:40,
+    { id:"bank", name:"ATM", emo:"🏧", tag:"お金", x:50, y:44,
       items:[
         {id:"withdraw500", name:"500円引き出し", price:-500, emo:"💵"},
         {id:"withdraw1000", name:"1000円引き出し", price:-1000, emo:"💴"}
       ]
     },
-    { id:"bakery", name:"パン屋", emo:"🥐", tag:"香ばしい", x:18, y:30,
+    { id:"bakery", name:"パン屋", emo:"🥐", tag:"香ばしい", x:18, y:28,
       items:[ {id:"croissant", name:"クロワッサン", price:220, emo:"🥐"},
               {id:"bagel", name:"ベーグル", price:200, emo:"🥯"} ]
     },
-    { id:"flower", name:"お花屋", emo:"🌷", tag:"プレゼント", x:70, y:28,
+    { id:"flower", name:"お花屋", emo:"🌷", tag:"プレゼント", x:72, y:28,
       items:[ {id:"flower", name:"お花", price:380, emo:"🌷"} ]
     },
-    { id:"cafe", name:"カフェ", emo:"☕️", tag:"休憩", x:42, y:18,
+    { id:"cafe", name:"カフェ", emo:"☕️", tag:"休憩", x:42, y:16,
       items:[ {id:"coffee", name:"コーヒー", price:260, emo:"☕️"},
               {id:"cake", name:"ケーキ", price:420, emo:"🍰"} ]
     },
-    { id:"library", name:"図書館", emo:"📚", tag:"情報", x:86, y:18,
+    { id:"library", name:"図書館", emo:"📚", tag:"情報", x:86, y:14,
       items:[ {id:"checklist", name:"メモ確認（無料）", price:0, emo:"📝"} ]
     },
   ];
@@ -620,22 +635,24 @@
     });
   }
 
-  const overlay = $("#overlay");
-  const modalTitle = $("#modalTitle");
-  const modalBody = $("#modalBody");
+  const overlay = document.querySelector("#overlay");
+  const modalTitle = document.querySelector("#modalTitle");
+  const modalBody = document.querySelector("#modalBody");
   function showModal(title, html){
     modalTitle.textContent = title;
     modalBody.innerHTML = html;
     overlay.classList.add("show");
   }
   function closeModal(){ overlay.classList.remove("show"); }
-  $("#closeModal").addEventListener("click", closeModal);
+  document.querySelector("#closeModal").addEventListener("click", closeModal);
   overlay.addEventListener("click", (e)=>{ if(e.target===overlay) closeModal(); });
 
   const mapEl = $("#map");
+
+  /* ★ノードの重なり回避：描画時に「画面に応じてノード幅」を参照し、余白パッドも増やす */
   function nodePosToPx(n){
     const r = mapEl.getBoundingClientRect();
-    const pad = 20;
+    const pad = 26;  // ★少し余白増
     const x = pad + (r.width - pad*2) * (n.x/100);
     const y = pad + (r.height - pad*2) * (n.y/100);
     return {x,y};
@@ -666,7 +683,7 @@
 
       div.innerHTML = `
         <div class="emo">${n.emo}</div>
-        <div class="name">${n.name}</div>
+        <div class="name" title="${n.name}">${n.name}</div>
         <div class="tag">${n.tag}</div>
         <div class="cost">${n.id===state.currentNode ? "ここ" : `移動 ${minCost}分`}</div>
       `;
@@ -1047,7 +1064,7 @@
     return out;
   }
 
-  const confetti = $("#confetti");
+  const confetti = document.querySelector("#confetti");
   const ctx = confetti.getContext("2d");
   let confAnim=null, particles=[];
   function resizeConfetti(){
@@ -1125,16 +1142,16 @@
     renderHUD();
     renderNodes();
 
-    $("#winText").textContent = msg;
-    $("#scoreBig").textContent = `${comp.ageAdjustedScore}`;
-    $("#m_task").textContent = `${Math.round(comp.taskRate*100)}%`;
-    $("#m_viol").textContent = `${comp.viol}`;
-    $("#m_eff").textContent = `${comp.effRatio}×`;
-    $("#m_plan").textContent = `${comp.planLatencySec}s`;
-    $("#m_detour").textContent = `${comp.detour}`;
+    document.querySelector("#winText").textContent = msg;
+    document.querySelector("#scoreBig").textContent = `${comp.ageAdjustedScore}`;
+    document.querySelector("#m_task").textContent = `${Math.round(comp.taskRate*100)}%`;
+    document.querySelector("#m_viol").textContent = `${comp.viol}`;
+    document.querySelector("#m_eff").textContent = `${comp.effRatio}×`;
+    document.querySelector("#m_plan").textContent = `${comp.planLatencySec}s`;
+    document.querySelector("#m_detour").textContent = `${comp.detour}`;
 
-    $("#winOverlay").classList.add("show");
-    $("#winOverlay").setAttribute("aria-hidden","false");
+    document.querySelector("#winOverlay").classList.add("show");
+    document.querySelector("#winOverlay").setAttribute("aria-hidden","false");
 
     startConfetti();
     beepSuccess();
@@ -1184,7 +1201,7 @@
       </div>
     `;
     showModal("❓ ルール / やり方", html);
-    $("#howClose").onclick = closeModal;
+    document.querySelector("#howClose").onclick = closeModal;
     logEvent("how_open", {});
   }
 
@@ -1253,8 +1270,8 @@
     if(state.timerId) clearInterval(state.timerId);
     state.timerId = null;
 
-    $("#exportBtn").disabled = true;
-    $("#planBtn").disabled = true;
+    document.querySelector("#exportBtn").disabled = true;
+    document.querySelector("#planBtn").disabled = true;
 
     state.configured = true;
 
@@ -1273,8 +1290,8 @@
     if(state.timerId) clearInterval(state.timerId);
     state.timerId = setInterval(tick, 1000);
 
-    $("#exportBtn").disabled = false;
-    $("#planBtn").disabled = false;
+    document.querySelector("#exportBtn").disabled = false;
+    document.querySelector("#planBtn").disabled = false;
 
     toast("スタート！まずは計画してから動こう（初動潜時も記録）");
     renderNodes();
@@ -1308,21 +1325,21 @@
       </div>
     `;
     showModal("▶︎ ゲーム設定", html);
-    $("#diffSel").value = state.difficultyKey || "normal";
-    $("#ageSel").value = state.ageBand || "65-74";
-    $("#cfgOk").onclick = ()=>{
-      setupGame($("#diffSel").value, $("#ageSel").value);
+    document.querySelector("#diffSel").value = state.difficultyKey || "normal";
+    document.querySelector("#ageSel").value = state.ageBand || "65-74";
+    document.querySelector("#cfgOk").onclick = ()=>{
+      setupGame(document.querySelector("#diffSel").value, document.querySelector("#ageSel").value);
       closeModal();
       startGame();
     };
-    $("#cfgCancel").onclick = closeModal;
+    document.querySelector("#cfgCancel").onclick = closeModal;
   }
 
-  $("#howBtn").addEventListener("click", showHow);
-  $("#planBtn").addEventListener("click", showPlan);
-  $("#exportBtn").addEventListener("click", exportJSON);
+  document.querySelector("#howBtn").addEventListener("click", showHow);
+  document.querySelector("#planBtn").addEventListener("click", showPlan);
+  document.querySelector("#exportBtn").addEventListener("click", exportJSON);
 
-  $("#startBtn").addEventListener("click", ()=>{
+  document.querySelector("#startBtn").addEventListener("click", ()=>{
     if(!state.configured){
       showStartConfig();
       return;
@@ -1330,15 +1347,15 @@
     if(!state.running) startGame();
   });
 
-  $("#againBtn").addEventListener("click", ()=>{
-    $("#winOverlay").classList.remove("show");
-    $("#winOverlay").setAttribute("aria-hidden","true");
+  document.querySelector("#againBtn").addEventListener("click", ()=>{
+    document.querySelector("#winOverlay").classList.remove("show");
+    document.querySelector("#winOverlay").setAttribute("aria-hidden","true");
     stopConfetti();
     showStartConfig();
   });
-  $("#closeWinBtn").addEventListener("click", ()=>{
-    $("#winOverlay").classList.remove("show");
-    $("#winOverlay").setAttribute("aria-hidden","true");
+  document.querySelector("#closeWinBtn").addEventListener("click", ()=>{
+    document.querySelector("#winOverlay").classList.remove("show");
+    document.querySelector("#winOverlay").setAttribute("aria-hidden","true");
     stopConfetti();
   });
 
